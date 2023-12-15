@@ -1,15 +1,18 @@
-use axum::{routing::get, Router};
+mod endpoints;
+use std::fs::OpenOptions;
+
+use axum::Router;
 
 #[tokio::main]
 async fn main() {
     // initialize tracing
     tracing_subscriber::fmt::init();
 
+    let _ = OpenOptions::new().create(true).open("todos.json");
+
     // build our application with a route
-    let app = Router::new()
-        // `GET /` goes to `root`
-        .route("/", get(root))
-        .route("/stocazzo", get(root2));
+    let app = Router::new().merge(endpoints::todos::router());
+    // `GET /` goes to `root`
 
     // run our app with hyper
     let listener = tokio::net::TcpListener::bind("127.0.0.1:6969")
@@ -17,12 +20,4 @@ async fn main() {
         .unwrap();
     tracing::debug!("listening on {}", listener.local_addr().unwrap());
     axum::serve(listener, app).await.unwrap();
-}
-
-async fn root() -> &'static str {
-    "Hello, World!"
-}
-
-async fn root2() -> &'static str {
-    "Hello, Stocazzo!"
 }
