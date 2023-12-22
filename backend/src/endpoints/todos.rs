@@ -1,19 +1,21 @@
 use std::fs::read_to_string;
 
 use axum::{
-    extract::{Json, Path},
+    extract::{Json, Path, State},
     http::StatusCode,
     response::IntoResponse,
     routing, Router,
 };
 use serde::{Deserialize, Serialize};
 
+use crate::{ApiResponse, AppState};
+
 const URL: &str = "/todos";
 const URL_ID: &str = "/todos/:id";
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct ToDo {
-    id: u64,
+    id: i64,
     title: String,
     description: String,
     completed: bool,
@@ -33,7 +35,7 @@ pub struct EditToDo {
     completed: Option<bool>,
 }
 
-pub fn router() -> Router {
+pub fn router() -> Router<AppState> {
     Router::new()
         // `GET /` goes to `root`
         .route(URL, routing::get(get_all))
@@ -42,6 +44,13 @@ pub fn router() -> Router {
         .route(URL_ID, routing::put(put))
         .route(URL_ID, routing::patch(patch))
         .route(URL_ID, routing::delete(delete))
+}
+
+pub async fn find_one(state: &AppState, id: i64) -> anyhow::Result<Option<ToDo>> {
+    let result = sqlx::query_as!(ToDo, "SELECT * FROM todos WHERE id = $1", id)
+        .fetch_optional(&state.db)
+        .await?;
+    Ok(result)
 }
 
 pub fn read_file() -> anyhow::Result<Vec<ToDo>> {
@@ -56,71 +65,98 @@ pub fn write_file(list: Vec<ToDo>) -> anyhow::Result<()> {
     Ok(())
 }
 
-async fn get_all() -> impl IntoResponse {
-    let array = read_file().unwrap();
-    Json(array)
+async fn get_all(State(state): State<AppState>) -> ApiResponse {
+    let result = sqlx::query_as!(ToDo, "SELECT * FROM todos")
+        .fetch_all(&state.db)
+        .await?;
+    Ok(Json(result).into_response())
 }
-async fn post(Json(data): Json<NewToDo>) -> impl IntoResponse {
-    let mut array = read_file().unwrap();
-    let id = array.iter().map(|x| x.id).max().unwrap_or(0) + 1;
-    let item = ToDo {
+
+async fn post(State(state): State<AppState>, Json(data): Json<NewToDo>) -> ApiResponse {
+    let result = sqlx::query_as!(
+        ToDo,
+        "INSERT INTO todos (title, description, completed) VALUES ($1, $2, $3) RETURNING *",
+        data.title,
+        data.description,
+        data.completed,
+    )
+    .fetch_one(&state.db)
+    .await?;
+    Ok(Json(result).into_response())
+}
+
+async fn get(State(state): State<AppState>, Path(id): Path<i64>) -> ApiResponse {
+    match find_one(&state, id).await? {
+        Some(x) => Ok(Json(x).into_response()),
+        None => Ok(StatusCode::NOT_FOUND.into_response()),
+    }
+}
+
+async fn put(
+    State(state): State<AppState>,
+    Path(id): Path<i64>,
+    Json(data): Json<NewToDo>,
+) -> ApiResponse {
+    let result = find_one(&state, id).await?;
+    if result.is_none() {
+        return Ok(StatusCode::NOT_FOUND.into_response());
+    }
+    let _ = sqlx::query!(
+        "UPDATE todos SET title = $1, description = $2, completed = $3 WHERE id = $4",
+        data.title,
+        data.description,
+        data.completed,
+        id
+    )
+    .execute(&state.db)
+    .await?;
+    let result = ToDo {
         id,
         title: data.title,
         description: data.description,
         completed: data.completed,
     };
-    array.push(item.clone());
-    write_file(array).unwrap();
-    Json(item).into_response()
+    Ok(Json(result).into_response())
 }
-async fn get(Path(id): Path<u64>) -> impl IntoResponse {
-    let array = read_file().unwrap();
-    let item = array.iter().find(|x| x.id == id);
-    match item {
-        Some(x) => Json(x).into_response(),
-        None => StatusCode::NOT_FOUND.into_response(),
+
+async fn patch(
+    State(state): State<AppState>,
+    Path(id): Path<i64>,
+    Json(data): Json<EditToDo>,
+) -> ApiResponse {
+    let result = find_one(&state, id).await?;
+    if result.is_none() {
+        return Ok(StatusCode::NOT_FOUND.into_response());
     }
-}
-async fn put(Path(id): Path<u64>, Json(data): Json<NewToDo>) -> impl IntoResponse {
-    let mut array = read_file().unwrap();
-    let index = array.iter().position(|x| x.id == id);
-    if index.is_none() {
-        return StatusCode::NOT_FOUND.into_response();
-    }
-    let item = ToDo {
+    let result = result.unwrap();
+    let title = data.title.unwrap_or(result.title);
+    let description = data.description.unwrap_or(result.description);
+    let completed = data.completed.unwrap_or(result.completed);
+    let _ = sqlx::query!(
+        "UPDATE todos SET title = $1, description = $2, completed = $3 WHERE id = $4",
+        title,
+        description,
+        completed,
+        id
+    )
+    .execute(&state.db)
+    .await?;
+    let result = ToDo {
         id,
-        title: data.title,
-        description: data.description,
-        completed: data.completed,
+        title,
+        description,
+        completed,
     };
-    array[index.unwrap()] = item.clone();
-    write_file(array).unwrap();
-    Json(item).into_response()
+    Ok(Json(result).into_response())
 }
-async fn patch(Path(id): Path<u64>, Json(data): Json<EditToDo>) -> impl IntoResponse {
-    let mut array = read_file().unwrap();
-    let index = array.iter().position(|x| x.id == id);
-    if index.is_none() {
-        return StatusCode::NOT_FOUND.into_response();
+
+async fn delete(State(state): State<AppState>, Path(id): Path<i64>) -> ApiResponse {
+    let result = find_one(&state, id).await?;
+    if result.is_none() {
+        return Ok(StatusCode::NOT_FOUND.into_response());
     }
-    let item = &array[index.unwrap()];
-    let item = ToDo {
-        id: item.id,
-        title: data.title.unwrap_or(item.title.clone()),
-        description: data.description.unwrap_or(item.description.clone()),
-        completed: data.completed.unwrap_or(item.completed),
-    };
-    array[index.unwrap()] = item.clone();
-    write_file(array).unwrap();
-    Json(item).into_response()
-}
-async fn delete(Path(id): Path<u64>) -> impl IntoResponse {
-    let mut array = read_file().unwrap();
-    let index = array.iter().position(|x| x.id == id);
-    if index.is_none() {
-        return StatusCode::NOT_FOUND.into_response();
-    }
-    array.remove(index.unwrap());
-    write_file(array).unwrap();
-    StatusCode::NO_CONTENT.into_response()
+    let _ = sqlx::query!("DELETE FROM todos WHERE id = $1", id)
+        .execute(&state.db)
+        .await?;
+    Ok(StatusCode::NO_CONTENT.into_response())
 }
