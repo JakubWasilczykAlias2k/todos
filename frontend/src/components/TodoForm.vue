@@ -1,7 +1,34 @@
 <script setup lang="ts">
-import { Form as VeeForm, Field as VeeField, ErrorMessage as VeeErrorMessage } from 'vee-validate'
 import * as z from 'zod'
 import { toTypedSchema } from '@vee-validate/zod'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter
+} from '@/components/ui/dialog'
+import {
+  Form,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormControl,
+  FormMessage,
+  FormDescription
+} from '@/components/ui/form'
+
+type Props = {
+  open: boolean
+}
+type Emits = {
+  (e: 'update:open', value: boolean): void
+}
+const props = defineProps<Props>()
+const emits = defineEmits<Emits>()
 
 const TODO_SCHEMA = z.object({
   title: z.string().min(3).max(100),
@@ -27,29 +54,40 @@ async function onSubmit(values: any) {
 </script>
 
 <template>
-  <VeeForm
-    class="flex flex-col gap-2 items-start my-3 mx-auto max-w-md"
-    @submit="onSubmit"
-    :validation-schema="schema"
-  >
-    <label class="flex flex-col gap-1 w-full">
-      Title
-      <VeeField
-        class="py-2 px-3 rounded border bg-slate-50 border-slate-300"
-        name="title"
-        placeholder="Title"
-      />
-      <VeeErrorMessage name="title" class="text-red-500" />
-    </label>
-    <label class="flex flex-col gap-1 w-full">
-      Description
-      <VeeField
-        class="py-2 px-3 rounded border bg-slate-50 border-slate-300"
-        name="description"
-        placeholder="Description"
-      />
-      <VeeErrorMessage name="description" class="text-red-500" />
-    </label>
-    <button class="py-2 px-3 rounded bg-slate-500 text-slate-50">Submit</button>
-  </VeeForm>
+  <Form class="flex flex-col gap-8 items-start my-3" @submit="onSubmit" :validation-schema="schema">
+    <Dialog :open="open" @update:open="(v) => emits('update:open', v)">
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle> New To Do </DialogTitle>
+          <DialogDescription> Create a new To Do item </DialogDescription>
+        </DialogHeader>
+        <FormField name="title" v-slot="{ componentField }">
+          <FormItem class="w-full">
+            <FormLabel>Title</FormLabel>
+            <FormDescription>The title of new ToDo</FormDescription>
+            <FormControl>
+              <Input class="w-full" placeholder="Get the groceries" v-bind="componentField" />
+            </FormControl>
+            <FormMessage />
+          </FormItem>
+        </FormField>
+        <FormField name="descripton" v-slot="{ componentField }">
+          <FormItem class="w-full">
+            <FormLabel>Description</FormLabel>
+            <FormDescription>The description of this ToDo</FormDescription>
+            <FormControl>
+              <Input class="w-full" v-bind="componentField" />
+            </FormControl>
+            <FormMessage />
+          </FormItem>
+        </FormField>
+        <DialogFooter>
+          <Button @click="emits('update:open', false)" variant="ghost" type="button">
+            Cancel
+          </Button>
+          <Button type="submit"> Save </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  </Form>
 </template>
