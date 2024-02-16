@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref } from 'vue'
-import TodoForm from '@/components/TodoForm.vue'
+import NewTodoView from '@/components/NewTodoView.vue'
 import TodosTable from '@/components/TodosTable.vue'
 import { Button } from '@/components/ui/button'
 import type { ToDo } from '@/models/todo'
@@ -24,7 +24,7 @@ function onSaved() {
 <template>
   <main class="container mt-4">
     <Button @click="isOpen = true">Create new To Do</Button>
-    <TodoForm :open="isOpen" @update:open="(v) => (isOpen = v)" @saved="onSaved" />
+    <NewTodoView :open="isOpen" @update:open="(v) => (isOpen = v)" @saved="onSaved" />
     <section class="py-6">
       <TodosTable :list="list" @list:changed="fetchList" />
     </section>
