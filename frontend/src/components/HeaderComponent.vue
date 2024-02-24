@@ -1,7 +1,7 @@
 <template>
   <header
-    class="bg-slate-400/50 text-slate-800 flex items-center justify-center backdrop-blur-md h-16 border-b border-slate-300/50"
+    class="flex justify-center items-center h-16 border-b bg-slate-400/50 text-slate-800 backdrop-blur-md border-slate-300/50"
   >
-    <h1 class="text-lg font-mono">My ToDo App</h1>
+    <RouterLink class="font-mono text-lg" to="/">My ToDo App</RouterLink>
   </header>
 </template>

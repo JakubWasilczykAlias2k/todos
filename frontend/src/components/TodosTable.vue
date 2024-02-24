@@ -14,6 +14,7 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { Trash2Icon, PencilIcon } from 'lucide-vue-next'
 import type { ToDo } from '@/models/todo'
 import { ref } from 'vue'
+import { useRouter } from 'vue-router'
 
 type Props = {
   list: ToDo[]
@@ -56,6 +57,8 @@ function onEditSaved() {
   editTodoOpen.value = false
   emits('list:changed')
 }
+
+const { push } = useRouter()
 </script>
 
 <template>
@@ -74,8 +77,12 @@ function onEditSaved() {
         <TableCell>
           <Checkbox @click="toggleComplete(item.id, !item.completed)" :checked="item.completed" />
         </TableCell>
-        <TableCell>{{ item.title }}</TableCell>
-        <TableCell>{{ item.description }}</TableCell>
+        <TableCell @click="push(`/todos/${item.id}`)" class="cursor-pointer">
+          {{ item.title }}
+        </TableCell>
+        <TableCell @click="push(`/todos/${item.id}`)" class="cursor-pointer">
+          {{ item.description }}
+        </TableCell>
         <TableCell
           class="opacity-0 transition-opacity duration-500 group-hover:opacity-100 text-end"
         >
