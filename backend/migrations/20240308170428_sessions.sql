@@ -1,0 +1,11 @@
+-- Add migration script here
+--
+
+CREATE TABLE sessions (
+  id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+  user_id INTEGER NOT NULL,
+  token VARCHAR(255) NOT NULL,
+  expires_at DATETIME NOT NULL,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL,
+  FOREIGN KEY(user_id) REFERENCES users(id)
+);

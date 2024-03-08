@@ -1,0 +1,9 @@
+-- Add migration script here
+
+CREATE TABLE users (
+  id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+  username VARCHAR(255) NOT NULL,
+  password VARCHAR(100) NOT NULL,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL,
+  updated_at DATETIME NOT NULL
+);
