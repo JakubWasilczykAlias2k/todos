@@ -67,6 +67,7 @@ async fn main() {
     // build our application with a route
     let app = Router::<AppState>::new()
         .merge(endpoints::todos::router())
+        .merge(endpoints::auth::router())
         .layer(CorsLayer::permissive())
         .with_state(state);
     // `GET /` goes to `root`
