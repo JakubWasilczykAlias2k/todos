@@ -165,6 +165,7 @@ dependencies = [
  "dotenvy",
  "serde",
  "serde_json",
+ "sha2",
  "sqlx",
  "tokio",
  "tower-http",

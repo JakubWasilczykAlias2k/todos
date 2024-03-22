@@ -5,3 +5,4 @@ target
 *.db-journal
 *.db-shm
 *.db-val
+*.db-wal
