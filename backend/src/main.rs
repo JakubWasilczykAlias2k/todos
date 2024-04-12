@@ -1,4 +1,6 @@
 mod endpoints;
+mod middlewares;
+
 use std::fs::OpenOptions;
 
 use axum::{
@@ -7,7 +9,7 @@ use axum::{
     Router,
 };
 use sqlx::{migrate::MigrateDatabase, Pool, Sqlite, SqlitePool};
-use tower_http::cors::CorsLayer;
+use tower_http::{cors::CorsLayer, trace::TraceLayer};
 
 #[derive(Clone)]
 pub struct AppState {
@@ -68,6 +70,8 @@ async fn main() {
     let app = Router::<AppState>::new()
         .merge(endpoints::todos::router())
         .merge(endpoints::auth::router())
+        .layer(axum::middleware::from_fn(middlewares::auth::auth))
+        .layer(TraceLayer::new_for_http())
         .layer(CorsLayer::permissive())
         .with_state(state);
     // `GET /` goes to `root`
@@ -76,6 +80,6 @@ async fn main() {
     let listener = tokio::net::TcpListener::bind("127.0.0.1:6969")
         .await
         .unwrap();
-    tracing::debug!("listening on {}", listener.local_addr().unwrap());
+    println!("listening on {}", listener.local_addr().unwrap());
     axum::serve(listener, app).await.unwrap();
 }
